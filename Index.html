@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Side Scroller Plus</title>
+  <style>
+    body { margin: 0; overflow: hidden; touch-action: none; }
+    #buttons {
+      position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 20px;
+    }
+    .btn {
+      width: 60px; height: 60px; background: rgba(0,0,0,0.3);
+      color: white; font-size: 30px; text-align: center;
+      line-height: 60px; border-radius: 30px; user-select: none;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body>
+
+<div id="buttons">
+  <div id="left" class="btn">◀️</div>
+  <div id="jump" class="btn">⏫</div>
+  <div id="right" class="btn">▶️</div>
+</div>
+
+<script>
+const config = {
+  type: Phaser.AUTO, width: 800, height: 400,
+  physics: { default: 'arcade', arcade: { gravity: { y: 500 }, debug: false }},
+  scene: { preload, create, update }
+};
+
+let player, cursors, ground, enemies, score = 0, scoreText, level = 1;
+
+const game = new Phaser.Game(config);
+
+function preload() {
+  this.load.image('ground', 'https://i.imgur.com/3VZw1qC.png');
+  this.load.image('enemy', 'https://i.imgur.com/hSdbfZk.png');
+}
+
+function create() {
+  ground = this.physics.add.staticGroup();
+  ground.create(400, 390, 'ground').setScale(2).refreshBody();
+
+  player = this.physics.add.sprite(100, 300, null)
+    .setDisplaySize(40,50).setTint(0xff0000).setBounce(0.2).setCollideWorldBounds(true);
+
+  enemies = this.physics.add.group();
+  spawnEnemies(this);
+
+  this.physics.add.collider(player, ground);
+  this.physics.add.collider(enemies, ground);
+  this.physics.add.overlap(player, enemies, hitEnemy, null, this);
+
+  cursors = this.input.keyboard.createCursorKeys();
+
+  scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', color: '#000' });
+  this.add.text(650,16, 'Level: 1', { fontSize: '24px', color: '#000' });
+
+  setupMobileControls();
+}
+
+function update() {
+  player.setVelocityX(0);
+  if (cursors.left.isDown || leftPressed) player.setVelocityX(-160);
+  if (cursors.right.isDown || rightPressed) player.setVelocityX(160);
+  if ((cursors.up.isDown || jumpPressed) && player.body.touching.down) {
+    player.setVelocityY(-330);
+    jumpPressed = false;
+  }
+  enemies.children.iterate(e => {
+    if (e.x < -50) e.destroy();
+    e.setVelocityX(-100 - level * 20);
+  });
+  if (enemies.countActive() < level + 1) spawnEnemies(this);
+
+  if (score >= level * 5) {
+    level++;
+    score = 0;
+    enemies.clear(true,true);
+    this.add.text(300, 200, 'Level ' + level, { fontSize: '32px', color: '#000' })
+      .setDepth(1).setScrollFactor(0);
+    spawnEnemies(this);
+    this.time.delayedCall(1000, () => level);
+  }
+}
+
+function hitEnemy(player, enemy) {
+  enemy.destroy();
+  score++;
+  scoreText.setText('Score: ' + score);
+}
+
+function spawnEnemies(scene) {
+  for (let i = 0; i < level + 2; i++) {
+    const x = Phaser.Math.Between(900, 1500);
+    const enemy = enemies.create(x, 300, 'enemy').setDisplaySize(40, 40);
+    enemy.setBounce(0.2).setCollideWorldBounds(false);
+  }
+}
+
+let leftPressed = false, rightPressed = false, jumpPressed = false;
+function setupMobileControls() {
+  document.getElementById('left').addEventListener('touchstart', () => leftPressed = true);
+  document.getElementById('left').addEventListener('touchend', () => leftPressed = false);
+  document.getElementById('right').addEventListener('touchstart', () => rightPressed = true);
+  document.getElementById('right').addEventListener('touchend', () => rightPressed = false);
+  document.getElementById('jump').addEventListener('touchstart', () => jumpPressed = true);
+}
+</script>
+
+</body>
+</html>
